@@ -20,13 +20,24 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const spotsLeft = details.max_participants - details.participants.length;
 
+        const participantsList = details.participants
+          .map(
+            (participant) => `
+              <div class='participant-item'>
+                <span>${participant}</span>
+                <button class='delete-participant' data-activity='${name}' data-participant='${participant}'>❌</button>
+              </div>
+            `
+          )
+          .join("");
+
         activityCard.innerHTML = `
           <h4>${name}</h4>
           <p>${details.description}</p>
           <p><strong>Schedule:</strong> ${details.schedule}</p>
           <p><strong>Availability:</strong> ${spotsLeft} spots left</p>
           <p><strong>Participants:</strong></p>
-          ${participantsList}
+          <div class='participants-list'>${participantsList}</div>
         `;
 
         activitiesList.appendChild(activityCard);
@@ -36,6 +47,31 @@ document.addEventListener("DOMContentLoaded", () => {
         option.value = name;
         option.textContent = name;
         activitySelect.appendChild(option);
+      });
+
+      // Add event listeners for delete buttons
+      document.querySelectorAll(".delete-participant").forEach((button) => {
+        button.addEventListener("click", async (event) => {
+          const activity = event.target.dataset.activity;
+          const participant = event.target.dataset.participant;
+
+          try {
+            const response = await fetch(
+              `/activities/${encodeURIComponent(activity)}/unregister?email=${encodeURIComponent(participant)}`,
+              {
+                method: "DELETE",
+              }
+            );
+
+            if (response.ok) {
+              fetchActivities(); // Refresh the activities list
+            } else {
+              console.error("Failed to unregister participant");
+            }
+          } catch (error) {
+            console.error("Error unregistering participant:", error);
+          }
+        });
       });
     } catch (error) {
       activitiesList.innerHTML = "<p>Failed to load activities. Please try again later.</p>";
@@ -64,6 +100,9 @@ document.addEventListener("DOMContentLoaded", () => {
         messageDiv.textContent = result.message;
         messageDiv.className = "success";
         signupForm.reset();
+
+        // Refresh the activities list dynamically
+        fetchActivities();
       } else {
         messageDiv.textContent = result.detail || "An error occurred";
         messageDiv.className = "error";
